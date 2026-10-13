@@ -1,0 +1,6 @@
+{
+  "checks": 14,
+  "chainId": 5042002,
+  "network": "local Ganache with testnet chainId; NOT live Arc",
+  "covered": "test relay, actual NFT ascension, USDC mock, funded epoch, 24h review, claim and replay"
+}

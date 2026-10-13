@@ -1,0 +1,50 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CofferHouse — ensayo Arc Testnet</title>
+<style>body{max-width:850px;margin:30px auto;padding:20px;background:#f4f0e5;color:#182b3c;font:16px system-ui}button{padding:12px;margin:6px;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:16px}section{margin:24px 0}a{color:#145b8a}</style>
+<h1>Ensayo de ascenso y rewards</h1><p>Solo Arc Testnet. Se crean contratos de ensayo separados de la colección real. Los cuatro despliegues y cada operación requieren confirmación en tu wallet.</p>
+<p>El emisor de pruebas no es SeaDrop: este ensayo valida ascenso y rewards, no el mint de OpenSea. El periodo de rewards conserva la espera real de 24 horas.</p>
+<button id="network">Añadir Arc Testnet</button><button id="connect">Conectar MetaMask</button>
+<section><h2>1. Contratos de ensayo</h2><button id="deploy">Desplegar los cuatro contratos de ensayo</button><button id="setup">Mintear cinco membresías y habilitar ascenso de prueba</button></section>
+<section><h2>2. Ascenso</h2><button id="activate">Activar membresías 1 y 4</button><button id="ascend">Ascender membresía 1 con TESTCOFFERS</button><button id="sacrifice">Ascender membresía 4 sacrificando 2 y 3</button></section>
+<section><h2>3. Rewards en USDC de testnet</h2><p>El ensayo asigna 1 USDC de testnet a la wallet que posee todas las membresías de prueba.</p><button id="fund">Financiar distribuidor con 1 USDC de testnet</button><button id="publish">Publicar periodo y comenzar espera de 24 horas</button><button id="claim">Reclamar periodo publicado</button></section>
+<button id="inspect">Verificar estado</button><button id="export">Descargar evidencia del ensayo</button>
+<pre id="log">Conecta tu wallet en Arc Testnet para empezar.</pre>
+<script src="../wallet/ethers.umd.min.js"></script><script>
+const CHAIN=5042002n,USDC='0x3600000000000000000000000000000000000000';
+let provider,signer,account,art,state,key,busy=false;
+const $=id=>document.getElementById(id),log=s=>$('log').textContent=s;
+const ercABI=['function balanceOf(address) view returns(uint256)','function decimals() view returns(uint8)','function transfer(address,uint256) returns(bool)','function approve(address,uint256) returns(bool)'];
+function save(){localStorage.setItem(key,JSON.stringify(state));}
+async function check(){
+ if(!window.ethereum)throw Error('No se detecta MetaMask');
+ provider=new ethers.BrowserProvider(window.ethereum);await provider.send('eth_requestAccounts',[]);
+ if((await provider.getNetwork()).chainId!==CHAIN)throw Error('Selecciona Arc Testnet: chainId 5042002');
+ signer=await provider.getSigner();account=await signer.getAddress();key='cofferhouse-rehearsal-'+account.toLowerCase();
+ state=JSON.parse(localStorage.getItem(key)||'{"transactions":[]}');art=await(await fetch('artifacts.json')).json();
+}
+const nft=()=>new ethers.Contract(state.membership,art.membership.abi,signer);
+const rewards=()=>new ethers.Contract(state.rewards,art.rewards.abi,signer);
+async function send(p,label){const tx=await p;log(label+'\nTransacción: '+tx.hash);await tx.wait();state.transactions.push({label,hash:tx.hash});save();log(label+' confirmada.');return tx;}
+async function deploy(kind,args){if(state[kind]){if(await provider.getCode(state[kind])==='0x')throw Error('Contrato guardado sin código');return;}
+ const c=await new ethers.ContractFactory(art[kind].abi,art[kind].bytecode,signer).deploy(...args);await send(Promise.resolve(c.deploymentTransaction()),'Desplegar '+kind);await c.waitForDeployment();state[kind]=await c.getAddress();save();}
+const actions={
+ network:async()=>{if(!window.ethereum)throw Error('No se detecta MetaMask');await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:ethers.toBeHex(CHAIN),chainName:'Arc Testnet',nativeCurrency:{name:'USDC',symbol:'USDC',decimals:18},rpcUrls:['https://rpc.testnet.arc.io'],blockExplorerUrls:['https://explorer.testnet.arc.io']}]});log('Red añadida. Selecciona Arc Testnet y conecta.');},
+ connect:async()=>{await check();log('Wallet: '+account+'\nArc Testnet · saldo USDC nativo: '+ethers.formatEther(await provider.getBalance(account)));},
+ deploy:async()=>{await deploy('relay',[]);await deploy('membership',['CofferHouse rehearsal','TESTKEY',[state.relay]]);await deploy('token',[]);await deploy('rewards',[state.membership,account]);log('Cuatro contratos de ensayo desplegados.\n'+JSON.stringify(state,null,2));},
+ setup:async()=>{const n=nft(),stats=await n.getMintStats(account);if(stats[1]===0n)await send(new ethers.Contract(state.relay,art.relay.abi,signer).mint(state.membership,account,5),'Mintear 5 pruebas');else if(stats[1]!==5n)throw Error('Supply inesperado en ensayo');if(!await n.ascensionEnabled()){await send(n.setAscendedBaseURI('https://example.invalid/cofferhouse-test/'),'Configurar URI de ensayo, sin arte real');await send(n.configureAscension(state.token,true),'Habilitar ascenso de ensayo');}log('Configuración lista.');},
+ activate:async()=>{const n=nft(),token=new ethers.Contract(state.token,ercABI,signer);for(const id of [1,4])if(await n.tier(id)===0n){await send(token.approve(state.membership,await n.ascendCost(1)),'Aprobar activación '+id);await send(n.activate(id),'Activar '+id);}},
+ ascend:async()=>{const n=nft();if(await n.tier(1)!==1n)throw Error('La membresía 1 debe estar en N1');const token=new ethers.Contract(state.token,ercABI,signer);await send(token.approve(state.membership,await n.ascendCost(2)),'Aprobar ascenso N2');await send(n.ascend(1),'Ascender 1 a N2');},
+ sacrifice:async()=>{if(!confirm('Se quemarán permanentemente las membresías DE PRUEBA 2 y 3. ¿Continuar?'))return;await send(nft().cannibalize(4,[2,3]),'Sacrificar 2 y 3; ascender 4');},
+ fund:async()=>{const t=new ethers.Contract(USDC,ercABI,signer);if(await t.decimals()!==6n)throw Error('Decimales USDC inesperados');if(!confirm('Transferir 1 USDC DE TESTNET al distribuidor de ensayo. ¿Continuar?'))return;await send(t.transfer(state.rewards,1000000n),'Financiar rewards de testnet');},
+ publish:async()=>{if(state.epoch)throw Error('Este ensayo ya publicó un periodo');const r=rewards(),block=await provider.getBlock('latest'),n=nft(),stats=await n.getMintStats(account,{blockTag:block.number});let points=0n;
+ for(let id=1;id<=Number(stats[1]);id++){let owner;try{owner=await n.ownerOf(id,{blockTag:block.number});}catch(e){if(e.code==='CALL_EXCEPTION'&&e.data==='0xdf2d9b42')continue;throw e;}if(owner.toLowerCase()!==account.toLowerCase())throw Error('El ensayo de una wallet no permite propietarios diferentes');points+=await r.levelWeight(await n.tier(id,{blockTag:block.number}));}
+ if(points===0n)throw Error('Activa al menos una membresía');
+ const epoch=await r.nextEpoch(),budget=1000000n,encoded=ethers.AbiCoder.defaultAbiCoder().encode(['uint256','address','address','uint256','address','address','uint256'],[CHAIN,state.rewards,state.membership,epoch,USDC,account,points]);const root=ethers.keccak256(ethers.keccak256(encoded));
+ const manifest={chainId:String(CHAIN),membership:state.membership,distributor:state.rewards,token:USDC,epoch:String(epoch),snapshotBlock:block.number,snapshotHash:block.hash,beneficiary:account,points:String(points),totalPoints:String(points),budget:String(budget),proof:[],root};
+ const hash=ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify(manifest)));await send(r.publishEpoch(USDC,root,budget,block.number,hash,points),'Publicar rewards');state.epoch=manifest;save();const e=await r.epochs(epoch);log('Periodo publicado. Podrás reclamar a partir de: '+new Date(Number(e.availableAt)*1000).toLocaleString());},
+ claim:async()=>{const m=state.epoch;if(!m)throw Error('Publica el periodo primero');const r=rewards(),e=await r.epochs(m.epoch),block=await provider.getBlock('latest');if(BigInt(block.timestamp)<e.availableAt)throw Error('Espera de revisión hasta '+new Date(Number(e.availableAt)*1000).toLocaleString());await send(r.claim(m.epoch,m.beneficiary,m.points,m.proof),'Reclamar USDC de testnet');log('USDC recibido en tu wallet. Agent Suite todavía no ejecuta operaciones con fondos.');},
+ inspect:async()=>{const n=nft(),r=rewards(),t=new ethers.Contract(USDC,ercABI,signer);log(JSON.stringify({wallet:account,chainId:String(CHAIN),contracts:state,supply:String(await n.totalSupply()),level1:String(await n.tier(1)),level4:String(await n.tier(4)),usdcWallet:ethers.formatUnits(await t.balanceOf(account),6),reservedUSDC:ethers.formatUnits(await r.reserved(USDC),6)},null,2));},
+ export:async()=>{const blob=new Blob([JSON.stringify({...state,chainId:String(CHAIN),wallet:account},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='cofferhouse-testnet-evidence.json';a.click();URL.revokeObjectURL(url);}
+};
+for(const [id,action]of Object.entries(actions))$(id).onclick=async()=>{if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{if(id!=='network')await check();await action();}catch(e){log('No completado: '+(e.shortMessage||e.message));}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}};
+if(window.ethereum){window.ethereum.on('accountsChanged',()=>location.reload());window.ethereum.on('chainChanged',()=>location.reload());}
+</script></html>

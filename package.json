@@ -6,7 +6,9 @@
     "test": "node test/integration.mjs && node test/metadata.mjs && node test/rewards.mjs",
     "build": "node scripts/build.mjs",
     "verify:arc": "node scripts/verify-arc-runtime.mjs",
-    "test:rewards": "node test/rewards.mjs"
+    "test:rewards": "node test/rewards.mjs",
+    "build:rehearsal": "node scripts/build-rehearsal.mjs",
+    "test:rehearsal": "node test/rehearsal.mjs"
   },
   "devDependencies": {
     "solc": "0.8.17",

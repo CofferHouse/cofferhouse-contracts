@@ -39,3 +39,9 @@ Only activated memberships participate. Wallet participation = wallet points / t
 The publisher is trusted to supply accurate snapshots and total points. The contract verifies proofs and computes payments but cannot reconstruct historical NFT state. Existing funded epochs have immutable roots and no claim expiry; administrative pause is available. Reserved rewards cannot be swept.
 
 Mainnet activation requires approved token addresses/decimals, hosting, testnet wallet rehearsals and external security review. No deployment keys or private reveal mappings belong in this repository.
+
+## Arc testnet rehearsal
+
+`rehearsal/` provides a wallet-signed rehearsal on Arc Testnet using a new copy of the NFT, a test-only mint relay and TESTCOFFERS, and the rewards distributor. It leaves the production collection untouched. See `rehearsal/README.md` for network and faucet setup. The 24-hour reward review period is retained. No testnet transactions have been submitted by this repository yet.
+
+`docs/HOLDER-AGENT-INTEGRATION.md` documents the same-wallet reward-to-strategy path. Agent Suite execution and the published UI remain pending.

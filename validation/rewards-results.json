@@ -1,0 +1,6 @@
+{
+  "checks": 40,
+  "compiler": "0.8.17+commit.8df45f5f.Emscripten.clang",
+  "network": "local Ganache, no Arc deployment",
+  "policy": "approved 0/1/2/3.5/5/8; scale 2"
+}

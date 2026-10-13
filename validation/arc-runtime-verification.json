@@ -1,0 +1,26 @@
+{
+  "address": "0x00005EA00Ac477B1030CE78506496e8C2dE24bf5",
+  "chainId": 5042,
+  "sourceOrigin": "ProjectOpenSea/seadrop tag seadrop-1.0",
+  "sourceCommit": "368b005b78cbcf35752983eb257afe3a37387285",
+  "compiler": "0.8.17+commit.8df45f5f.Emscripten.clang",
+  "optimizerRuns": 1000000,
+  "evmVersion": "london",
+  "runtimeBytes": 21081,
+  "runtimeKeccak256": "0x49ac1def6aee7ea8fcafc434b9c4c723caa850027a143fa0f9d5be02275b5539",
+  "executableExactMatch": true,
+  "immutableChainAndDomainMatch": true,
+  "immutableValues": [
+    {
+      "offset": 14432,
+      "value": "00000000000000000000000000000000000000000000000000000000000013b2"
+    },
+    {
+      "offset": 14645,
+      "value": "dd5766d2bdbf48a6ee7287a2a3f766d47c8303ea57ff7911c08a92dca4695149"
+    }
+  ],
+  "metadataExactMatch": false,
+  "evidence": "Bytecode supplied by user from Arc explorer screenshot; no independent live RPC retrieval. Solidity metadata excluded, deployed immutables validated against expected chain/address. SeaDrop-v1 source is official tag, dependencies use bundled versions whose executable output matches.",
+  "scope": "Code identity; does not prove Studio recognizes the custom CofferHouse collection, audit the extension, or constitute a live Arc mint."
+}

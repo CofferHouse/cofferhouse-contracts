@@ -1,0 +1,7 @@
+{
+  "compiler": "0.8.17+commit.8df45f5f.Emscripten.clang",
+  "runtimeBytes": 20443,
+  "checks": 79,
+  "seadrop": "757590f11babfd81f4608f736e79e388469377f2",
+  "network": "local Ganache; NOT live Arc/Studio verification"
+}

@@ -1,0 +1,60 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><title>CofferHouse — Mint y ascenso</title>
+<style>body{max-width:850px;margin:35px auto;padding:20px;background:#f4f0e5;color:#182b3c;font:16px system-ui}label{display:block;margin:12px 0}input{padding:8px;width:95%;box-sizing:border-box}button{margin:6px;padding:12px;cursor:pointer}pre{white-space:pre-wrap;background:white;padding:16px}h2{margin-top:30px}</style>
+<h1>CofferHouse — Configuración y pruebas</h1><p>Conecta tu wallet. Cada operación se revisa y firma en ella. Nunca escribas tu frase semilla ni tu llave privada aquí. Esta herramienta local no envía credenciales a un servidor.</p>
+<label>Cadena esperada (Arc testnet: 5042002; Arc mainnet: 5042)<input id="chain" value="5042002"></label>
+<label>Dirección de SeaDrop verificada para ESA cadena<input id="sea" placeholder="0x…"></label>
+<label><input id="verified" type="checkbox" style="width:auto"> He verificado la dirección de SeaDrop y el soporte del Drop personalizado en esta cadena.</label>
+<button id="connect">Conectar wallet</button><button id="inspect">Comprobar SeaDrop (sin transacción)</button><button id="deploy">Desplegar colección</button>
+<label>Dirección de la colección<input id="nft" placeholder="Se completa al desplegar"></label>
+<h2>1. Metadata y cobros</h2>
+<label>URI de metadata oculta (archivo JSON)<input id="hidden" placeholder="ipfs://…/placeholder.json"></label>
+<label>Wallet que recibirá los ingresos<input id="payout" placeholder="0x…"></label>
+<label>Destinatario de fees de OpenSea verificado<input id="fee" placeholder="0x…"></label>
+<button id="initial">Configurar metadata oculta y cobros</button>
+<h2>2. Reserva de las 100 piezas</h2><p>Debe hacerse antes de abrir el mint público. Mint gratuito mediante allowlist de una wallet; no hay un segundo mint de administrador.</p>
+<label>Wallet del equipo<input id="team" placeholder="0x…"></label>
+<label>Inicio reserva (UTC)<input id="teamStart" type="datetime-local"></label><label>Fin reserva (UTC)<input id="teamEnd" type="datetime-local"></label>
+<button id="reserveConfig">Configurar reserva</button><button id="reserveMint">Mintear las 100 a la wallet del equipo</button>
+<h2>3. Venta pública</h2>
+<label>Precio por membresía en USDC nativo (18 decimales en SeaDrop)<input id="price" placeholder="Precio final aprobado"></label>
+<label>Límite acumulado por wallet<input id="limit" value="4" type="number"></label>
+<label>Fee del Drop en puntos base, según condiciones verificadas de OpenSea (1000 = 10%)<input id="bps" value="1000" type="number"></label>
+<label>Inicio público (UTC)<input id="start" type="datetime-local"></label><label>Fin público (UTC)<input id="end" type="datetime-local"></label>
+<button id="publicConfig">Configurar venta pública</button><button id="mint">Mintear 1 de prueba / compra</button>
+<h2>4. Revelación y ascenso</h2>
+<label>URI del directorio final de metadata (termina en /; archivos sin extensión)<input id="revealed" placeholder="ipfs://…/"></label>
+<button id="reveal">Revelar metadata</button>
+<label>Dirección de $COFFERS<input id="token" placeholder="0x…"></label>
+<label>URI de metadata de ascenso (termina en /; rutas nivel/tokenId.json)<input id="ascended" placeholder="https://…/"></label>
+<label>Costes para N1 a N5, en unidades mínimas del token (JSON de 5 cadenas enteras)<input id="costs" placeholder='["20000000000000000000000", …]'></label>
+<button id="enable">Configurar costes y habilitar ascenso</button><button id="disable">Deshabilitar ascenso</button>
+<label>ID de la membresía<input id="id" type="number" value="1"></label>
+<button id="activate">Aprobar importe y activar</button><button id="ascend">Aprobar importe y ascender</button>
+<label>IDs a sacrificar (JSON)<input id="sacrifices" value="[]"></label>
+<button id="sacrifice">Sacrificar y ascender</button><pre id="log">Listo. Requiere una wallet EVM inyectada.</pre>
+<script src="ethers.umd.min.js"></script><script>
+const $=id=>document.getElementById(id),get=id=>$(id).value.trim();let provider,signer,artifact;
+const sdABI=['function mintPublic(address,address,address,uint256) payable','function mintAllowList(address,address,address,uint256,(uint256,uint256,uint256,uint256,uint256,uint256,uint256,bool),bytes32[]) payable'];
+const log=s=>$('log').textContent=s;
+const timestamp=id=>{const x=Date.parse(get(id)+'Z')/1000;if(!Number.isSafeInteger(x))throw Error('Completa fechas UTC');return x;};
+async function connected(){if(!window.ethereum)throw Error('No se detectó wallet');provider=new ethers.BrowserProvider(window.ethereum);await provider.send('eth_requestAccounts',[]);signer=await provider.getSigner();if((await provider.getNetwork()).chainId!==BigInt(get('chain')))throw Error('Wallet en otra cadena');if(![5042,5042002].includes(Number(get('chain'))))throw Error('Cadena no admitida');artifact=await(await fetch('artifact.json')).json();return signer;}
+async function checked(){await connected();if(!$('verified').checked)throw Error('Falta verificar SeaDrop/Studio');if((await provider.getCode(get('sea')))==='0x')throw Error('SeaDrop sin código');}
+const collection=()=>new ethers.Contract(get('nft'),artifact.abi,signer);
+async function send(p){const x=await p;log('Transacción: '+x.hash+'\nEsperando confirmación…');await x.wait();log('Confirmada: '+x.hash);return x;}
+const actions={
+inspect:async()=>{await connected();const address=ethers.getAddress(get('sea'));const code=await provider.getCode(address);if(code==='0x')throw Error('La dirección no contiene contrato en esta red');const sd=new ethers.Contract(address,['function getPublicDrop(address) view returns (tuple(uint80,uint48,uint48,uint16,uint16,bool))'],provider);const drop=await sd.getPublicDrop(ethers.ZeroAddress);log(JSON.stringify({chainId:String((await provider.getNetwork()).chainId),address,codeBytes:(code.length-2)/2,codeHash:ethers.keccak256(code),getPublicDropResponds:true,emptyCollectionPrice:String(drop[0]),notice:'Lectura técnica; no demuestra que OpenSea autorice esta dirección. Confirmar dirección oficial y fuente verificada.'},null,2));},
+connect:async()=>{await connected();log('Conectada: '+await signer.getAddress());},
+deploy:async()=>{await checked();const c=await new ethers.ContractFactory(artifact.abi,artifact.bytecode,signer).deploy('CofferHouse','COFFER',[get('sea')]);log('Despliegue: '+c.deploymentTransaction().hash);await c.waitForDeployment();$('nft').value=await c.getAddress();log('Colección desplegada: '+get('nft'));},
+initial:async()=>{await checked();await send(collection().setBaseURI(get('hidden')));await send(collection().updateCreatorPayoutAddress(get('sea'),get('payout')));await send(collection().updateAllowedFeeRecipient(get('sea'),get('fee'),true));},
+reserveConfig:async()=>{await checked();const stats=await collection().getMintStats(get('team'));if(stats[1]!==0n)throw Error('Reserva exige colección sin mints');const p=[0,100,timestamp('teamStart'),timestamp('teamEnd'),1,100,0,true];const root=ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(['address','tuple(uint256,uint256,uint256,uint256,uint256,uint256,uint256,bool)'],[get('team'),p]));await send(collection().updateAllowList(get('sea'),[root,[],'']));},
+reserveMint:async()=>{await checked();if((await signer.getAddress()).toLowerCase()!==get('team').toLowerCase())throw Error('Firma con la wallet del equipo');const p=[0,100,timestamp('teamStart'),timestamp('teamEnd'),1,100,0,true];await send(new ethers.Contract(get('sea'),sdABI,signer).mintAllowList(get('nft'),get('fee'),ethers.ZeroAddress,100,p,[]));},
+publicConfig:async()=>{await checked();const stats=await collection().getMintStats(get('team'));if(stats[1]!==100n||await collection().balanceOf(get('team'))!==100n)throw Error('Completa primero la reserva de 100');await send(collection().updatePublicDrop(get('sea'),[ethers.parseUnits(get('price'),18),timestamp('start'),timestamp('end'),Number(get('limit')),Number(get('bps')),true]));},
+mint:async()=>{await checked();await send(new ethers.Contract(get('sea'),sdABI,signer).mintPublic(get('nft'),get('fee'),ethers.ZeroAddress,1,{value:ethers.parseUnits(get('price'),18)}));},
+reveal:async()=>{await checked();if(!get('revealed').endsWith('/'))throw Error('URI termina en /');if(!confirm('¿Mint cerrado y mapping final revisado? La revelación publica el arte.'))return;await send(collection().setBaseURI(get('revealed')));},
+enable:async()=>{await checked();if(!get('ascended').endsWith('/'))throw Error('URI termina en /');const c=JSON.parse(get('costs'));if(c.length!==5||c.some(x=>!/^\d+$/.test(String(x))))throw Error('Introduce cinco costes enteros aprobados');await send(collection().setAscendedBaseURI(get('ascended')));await send(collection().setAscendCosts(['0',...c]));await send(collection().configureAscension(get('token'),true));},
+disable:async()=>{await checked();await send(collection().configureAscension(await collection().burnToken(),false));},
+sacrifice:async()=>{await checked();const ids=JSON.parse(get('sacrifices'));if(!confirm('Los NFTs seleccionados se eliminarán permanentemente. ¿Continuar?'))return;await send(collection().cannibalize(get('id'),ids));}
+};
+for(const op of ['activate','ascend'])actions[op]=async()=>{await checked();const c=collection(),target=op==='activate'?1:Number(await c.tier(get('id')))+1;if(target>5)throw Error('Nivel máximo');const amount=await c.ascendCost(target);const token=new ethers.Contract(await c.burnToken(),['function approve(address,uint256) returns(bool)'],signer);await send(token.approve(get('nft'),amount));await send(c[op](get('id')));};
+for(const [id,action] of Object.entries(actions))$(id).onclick=()=>action().catch(e=>log('No completado: '+(e.shortMessage||e.message)));
+</script></html>

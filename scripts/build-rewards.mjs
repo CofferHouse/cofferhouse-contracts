@@ -1,0 +1,12 @@
+import fs from 'node:fs';
+import solc from 'solc';
+const entry='CofferHouseRewards.sol';
+const sources={[entry]:{content:fs.readFileSync('src/'+entry,'utf8')}};
+const settings={optimizer:{enabled:true,runs:200},evmVersion:'london',outputSelection:{'*':{'*':['abi','evm.bytecode.object','evm.deployedBytecode.object']}}};
+const out=JSON.parse(solc.compile(JSON.stringify({language:'Solidity',sources,settings}),{import:p=>({contents:fs.readFileSync('vendor/'+p,'utf8')})}));
+if((out.errors||[]).some(x=>x.severity==='error'))throw Error(JSON.stringify(out.errors));
+for(const name of Object.keys(out.sources))if(name!==entry)sources[name]={content:fs.readFileSync('vendor/'+name,'utf8')};
+fs.writeFileSync('verification/rewards-standard-input.json',JSON.stringify({language:'Solidity',sources,settings},null,2));
+const c=out.contracts[entry].CofferHouseRewards;
+fs.writeFileSync('wallet/rewards-artifact.json',JSON.stringify(c,null,2));
+console.log('Rewards built:',c.evm.deployedBytecode.object.length/2,'runtime bytes');

@@ -1,0 +1,33 @@
+{
+  "reference": "Merry AIgents supplied source",
+  "approvedByUser": "2026-10-12",
+  "token": "COFFERS",
+  "costsPerStepTokens": [
+    "20000",
+    "80000",
+    "320000",
+    "1000000",
+    "2000000"
+  ],
+  "decimals": null,
+  "rewardWeights": [
+    0,
+    1,
+    2,
+    3.5,
+    5,
+    8
+  ],
+  "rewardWeightsStatus": "Approved by user 2026-10-12; implemented, not deployed",
+  "sacrificeRule": "target tier minus sacrifice count; survivor activated; homogeneous sacrificed tiers",
+  "alternativeProposal": "Discarded by user",
+  "rewardWeightsScaled": [
+    0,
+    2,
+    4,
+    7,
+    10,
+    16
+  ],
+  "pointScale": 2
+}

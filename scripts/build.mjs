@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+const require=createRequire(process.env.COFFER_DEPENDENCIES||import.meta.url),solc=require('solc');
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
+const input={language:'Solidity',sources:{'CofferHouseSeaDrop.sol':{content:fs.readFileSync(root+'/src/CofferHouseSeaDrop.sol','utf8')}},settings:{optimizer:{enabled:true,runs:200},evmVersion:'london',outputSelection:{'*':{'*':['abi','evm.bytecode.object','evm.deployedBytecode.object']}}}};
+const out=JSON.parse(solc.compile(JSON.stringify(input),{import:p=>{try{return {contents:fs.readFileSync(root+'/vendor/'+p,'utf8')}}catch{return {error:'Missing '+p}}}}));
+if((out.errors||[]).some(x=>x.severity==='error'))throw Error(out.errors.map(x=>x.formattedMessage).join('\n'));
+const allSources={};
+for(const name of Object.keys(out.sources)) allSources[name]=input.sources[name]||{content:fs.readFileSync(root+'/vendor/'+name,'utf8')};
+fs.mkdirSync(root+'/verification',{recursive:true});
+fs.writeFileSync(root+'/verification/standard-input.json',JSON.stringify({...input,sources:allSources},null,2));
+const c=out.contracts['CofferHouseSeaDrop.sol'].CofferHouseSeaDrop;
+const bytes=c.evm.deployedBytecode.object.length/2;if(bytes>24576)throw Error('EIP170 size exceeded');
+fs.writeFileSync(root+'/wallet/artifact.json',JSON.stringify({abi:c.abi,bytecode:'0x'+c.evm.bytecode.object,runtimeBytes:bytes,compiler:solc.version()},null,2));
+fs.copyFileSync(require.resolve('ethers').replace(/lib.commonjs\/index.js$/, 'dist/ethers.umd.min.js'),root+'/wallet/ethers.umd.min.js');
+console.log('Built wallet/artifact.json; runtime bytes',bytes);

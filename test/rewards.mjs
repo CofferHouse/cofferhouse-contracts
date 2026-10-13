@@ -1,0 +1,71 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import solc from 'solc';
+import ganache from 'ganache';
+import {ethers} from 'ethers';
+import {makeManifest,rewardLeaf} from '../scripts/rewards.mjs';
+const input={language:'Solidity',sources:{'Rewards.sol':{content:fs.readFileSync('src/CofferHouseRewards.sol','utf8')},'Mocks.sol':{content:`pragma solidity ^0.8.17;
+import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+contract Mock is ERC20 { bool public fail; constructor() ERC20("USDC test","U"){_mint(msg.sender,1000000);} function decimals() public pure override returns(uint8){return 6;} function setFail(bool f) external {fail=f;} function transfer(address to,uint256 a) public override returns(bool){if(fail)return false;return super.transfer(to,a);} }
+`}},settings:{optimizer:{enabled:true,runs:200},evmVersion:'london',outputSelection:{'*':{'*':['abi','evm.bytecode.object']}}}};
+const out=JSON.parse(solc.compile(JSON.stringify(input),{import:p=>({contents:fs.readFileSync('vendor/'+p,'utf8')})}));
+assert(!(out.errors||[]).some(x=>x.severity==='error'),JSON.stringify(out.errors));
+const rpc=ganache.provider({logging:{quiet:true},wallet:{totalAccounts:4},chain:{chainId:1337}});
+const provider=new ethers.BrowserProvider(rpc,undefined,{cacheTimeout:-1});provider.pollingInterval=10;
+const [owner,alice,bob,relay]=await Promise.all([0,1,2,3].map(i=>provider.getSigner(i)));
+const a=await alice.getAddress(),b=await bob.getAddress(),o=await owner.getAddress();let checks=0;
+const tx=async p=>{await(await p).wait();};
+const reject=async p=>{await assert.rejects(async()=>{await tx(p);});checks++;};
+async function deploy(c,args=[]){const x=await new ethers.ContractFactory(c.abi,c.evm.bytecode.object,owner).deploy(...args);await x.waitForDeployment();return x;}
+const token=await deploy(out.contracts['Mocks.sol'].Mock),t=await token.getAddress();
+const art=out.contracts['Rewards.sol'].CofferHouseRewards;
+const r=await deploy(art,[t,o]),address=await r.getAddress();
+for(let i=0;i<=5;i++){assert.equal(await r.levelWeight(i),BigInt([0,2,4,7,10,16][i]));checks++;}
+await assert.rejects(r.levelWeight(6));checks++;
+assert.equal(await r.allocation(100,1,3),33n);checks++;
+assert.equal(await r.POINT_SCALE(),2n);checks++;
+const domain={chainId:'1337',distributor:address,membership:t,epoch:'1',token:t};
+const snap={chainId:'1337',membership:t,blockNumber:1,blockHash:ethers.ZeroHash,memberships:[{id:1,owner:a,level:1},{id:2,owner:b,level:2},{id:3,owner:a,level:0}]};
+const m=makeManifest(domain,snap,['0','2','4','7','10','16'],'100');
+const odd=makeManifest(domain,{...snap,memberships:[...snap.memberships,{id:4,owner:o,level:1}]},[0,2,4,7,10,16],101);
+for(const c of odd.claims){let h=rewardLeaf(domain,c.account,c.points);for(const sibling of c.proof)h=ethers.keccak256(ethers.concat([h,sibling].sort()));assert.equal(h,odd.root);checks++;}
+assert.equal(odd.allocated,'100');assert.equal(odd.unallocatedRounding,'1');checks+=2;
+const allLevels={...snap,memberships:[1,2,3,4,5].map(level=>({id:level,owner:ethers.getAddress('0x'+String(level).padStart(40,'0')),level}))};
+const balanced=makeManifest(domain,allLevels,[0,2,4,7,10,16],1950);
+assert.deepEqual(balanced.claims.map(c=>c.amount),['100','200','350','500','800']);checks++;
+assert.equal(balanced.totalPoints,'39');checks++;
+assert.throws(()=>makeManifest(domain,snap,[0,1,2,4,8,16],100));checks++;
+assert.deepEqual(m.claims.map(x=>x.amount).sort(),['33','66']);checks++;
+assert.throws(()=>makeManifest(domain,{...snap,memberships:[...snap.memberships,snap.memberships[0]]},[0,2,4,7,10,16],100));checks++;
+const hash=ethers.keccak256(ethers.toUtf8Bytes(JSON.stringify(m)));
+await reject(r.connect(alice).publishEpoch(t,m.root,100,1,hash,6));
+await reject(r.publishEpoch(t,m.root,100,99999999,hash,6));
+await reject(r.publishEpoch(t,m.root,100,1,hash,6));
+await tx(token.transfer(address,150));await tx(r.publishEpoch(t,m.root,100,1,hash,6));
+await reject(r.recoverSurplus(t,o,51));
+await tx(r.recoverSurplus(t,o,50));
+const ca=m.claims.find(x=>x.account===a),cb=m.claims.find(x=>x.account===b);
+await reject(r.claim(1,a,ca.points,ca.proof));
+await rpc.request({method:'evm_increaseTime',params:[86401]});await rpc.request({method:'evm_mine',params:[]});
+await reject(r.claim(1,a,3,ca.proof));
+await tx(r.setPaused(true));await reject(r.claim(1,a,ca.points,ca.proof));await tx(r.setPaused(false));
+await tx(token.setFail(true));await reject(r.claim(1,a,ca.points,ca.proof));assert.equal(await r.claimed(1,a),false);checks++;
+await tx(token.setFail(false));await tx(r.connect(relay).claim(1,a,ca.points,ca.proof));
+assert.equal(await token.balanceOf(a),33n);assert.equal(await r.reserved(t),67n);checks+=2;
+await reject(r.claim(1,a,ca.points,ca.proof));
+await tx(token.transfer(address,100));
+const m2=makeManifest({...domain,epoch:'2'},snap,[0,2,4,7,10,16],100);
+await tx(r.publishEpoch(t,m2.root,100,1,hash,6));
+await tx(r.connect(relay).claim(1,b,cb.points,cb.proof)); // Old proofs remain valid.
+assert.equal(await token.balanceOf(b),66n);assert.equal(await r.reserved(t),100n);checks+=2;
+await tx(r.recoverSurplus(t,o,1));
+await rpc.request({method:'evm_increaseTime',params:[86401]});await rpc.request({method:'evm_mine',params:[]});
+await reject(r.claim(2,a,ca.points,ca.proof)); // Epoch replay.
+const r2=await deploy(art,[t,o]);assert.notEqual(rewardLeaf({...domain,distributor:await r2.getAddress()},a,25),rewardLeaf(domain,a,25));checks++;
+assert.notEqual(rewardLeaf({...domain,chainId:'5042'},a,25),rewardLeaf(domain,a,25));checks++;
+await reject(r.connect(alice).setPaused(true));
+await tx(r.proposeOwner(b));await reject(r.connect(alice).acceptOwnership());await tx(r.connect(bob).acceptOwnership());await reject(r.setPaused(true));
+assert.equal(await r.owner(),b);checks++;
+fs.writeFileSync('validation/rewards-results.json',JSON.stringify({checks,compiler:solc.version(),network:'local Ganache, no Arc deployment',policy:'approved 0/1/2/3.5/5/8; scale 2'},null,2));
+fs.writeFileSync('wallet/rewards-artifact.json',JSON.stringify(art,null,2));
+console.log('PASS rewards:',checks,'checks');await rpc.disconnect();

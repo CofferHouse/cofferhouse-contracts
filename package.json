@@ -1,0 +1,16 @@
+{
+  "name": "cofferhouse-seadrop-candidate",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/integration.mjs && node test/metadata.mjs && node test/rewards.mjs",
+    "build": "node scripts/build.mjs",
+    "verify:arc": "node scripts/verify-arc-runtime.mjs",
+    "test:rewards": "node test/rewards.mjs"
+  },
+  "devDependencies": {
+    "solc": "0.8.17",
+    "ethers": "6.17.0",
+    "ganache": "7.9.2"
+  }
+}

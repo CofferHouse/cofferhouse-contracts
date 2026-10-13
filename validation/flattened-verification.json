@@ -1,0 +1,8 @@
+{
+  "compiler": "0.8.17+commit.8df45f5f.Emscripten.clang",
+  "optimizerRuns": 200,
+  "evmVersion": "london",
+  "runtimeBytes": 20443,
+  "executableMatchesTestedModularSource": true,
+  "metadataExcluded": true
+}

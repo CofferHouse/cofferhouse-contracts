@@ -17,23 +17,11 @@ Approved step costs remain 20,000 / 80,000 / 320,000 / 1,000,000 / 2,000,000
 COFFERS. Configuration uses the actual token decimals, not an assumption of 18.
 Approved reward weights remain 0 / 2 / 4 / 7 / 10 / 16 internal points.
 
-## Empower removal candidate — latest user decision
+## Existing collection: empower policy
 
-The user requested removal of the underpriced empower mechanism before launch.
-`candidates/CofferHouseSeaDrop.sol` removes the function, timer storage, timer
-cleanup and event entirely. `src/CofferHouseSeaDrop.sol` is preserved as the
-historical source of the existing collection. The candidate cannot patch an
-already deployed collection. Its inheritance exposes no upgrade entry point.
-A new deployment and a decision about the existing collection/mint are required
-before using this candidate. No collection is replaced by this PR.
-
-Run `node test/no-empower.mjs` for the candidate's full SeaDrop integration suite.
-It also submits the old empower selector directly from owner and non-owner,
-with zero, minimum and larger amounts, to ensure it reverts even when ascension
-is enabled. The launch config/verifier below still targets the existing collection
-and must not be interpreted as approval to activate it after this new decision.
-
-### Existing deployment limitation
+Preserve the existing collection and mint configuration. No replacement NFT
+contract or new upload of the collection is proposed. The user chose to continue
+with the existing implementation and no benefits based on empower.
 
 Enabling ascension also exposes `empower`. There is no separate switch. Any
 positive amount sent to DEAD adds 30 days to an active membership's

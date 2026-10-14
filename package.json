@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/integration.mjs && node test/metadata.mjs && node test/rewards.mjs",
+    "test": "node test/integration.mjs && node test/metadata.mjs && node test/rewards.mjs && node test/launch.mjs && node test/no-empower.mjs",
+    "test:launch": "node test/launch.mjs && node test/no-empower.mjs",
     "build": "node scripts/build.mjs",
     "verify:arc": "node scripts/verify-arc-runtime.mjs",
     "test:rewards": "node test/rewards.mjs",

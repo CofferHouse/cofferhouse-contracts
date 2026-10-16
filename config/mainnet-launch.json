@@ -1,0 +1,13 @@
+{
+  "chainId": 5042,
+  "membership": "0xBdAAD4B289b65B572E231e548278B9451A13f0FE",
+  "coffers": null,
+  "coffersDecimals": null,
+  "rewards": null,
+  "membershipOwner": null,
+  "rewardsOwner": null,
+  "ascendedBaseURI": null,
+  "costsPerStepTokens": ["20000", "80000", "320000", "1000000", "2000000"],
+  "rewardWeightsScaled": [0, 2, 4, 7, 10, 16],
+  "ascensionEnabled": false
+}

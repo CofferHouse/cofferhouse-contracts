@@ -36,7 +36,7 @@ contract calls. This limitation must be included in the later audit scope.
 Arc Testnet memberships #2 and #3 were sacrificed to raise #4 to level 2;
 payment of 320,000 TESTCOFFERS raised #4 to level 3. Rewards period 1 was
 published with 1,000 TESTCOFFERS, 11 internal points and a 24-hour review delay.
-The real testnet claim remains pending until October 14, 19:08:43 Mexico City.
+The review window ended October 14 at 19:08:43 Mexico City. The owner reports completed tests; see `docs/REHEARSAL-STATUS-2026-10-18.md` for reconciliation with the independently observed unpaid epoch.
 Holder Center testnet integration was merged in Agent Suite PR #1. This does not
 enable mainnet actions. UI wallet end-to-end testing remains pending.
 
@@ -71,7 +71,7 @@ two-step ownership transfer is accepted.
 - Confirm final administrators, fee source and reward publication cadence.
 - Deploy and verify the rewards distributor bound to the existing collection.
 - Confirm independent mainnet collection identity and mint configuration.
-- Complete the pending claim rehearsal and UI wallet flows.
+- Reconcile claim evidence and complete any remaining production UI wallet validation.
 - Configure costs/token/URI and activate through explicitly reviewed wallet calls.
 - Fund only actual received fees; publish reviewed, durably hosted manifests.
 

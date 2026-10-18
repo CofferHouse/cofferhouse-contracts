@@ -63,9 +63,7 @@ Immutable roots cannot be replaced or cancelled; do not sign a failed check.
 
 ## Current rehearsal and UI scope
 
-Period 1 on Arc Testnet is already published. Its real wallet claim remains pending
-until October 14, 2026, 19:08:43 Mexico City. The Holder Center currently supports
-that rehearsal period only. A production manifest catalog and wallet UI rehearsal
+Period 1 on Arc Testnet is already published. Its review window ended October 14, 2026, 19:08:43 Mexico City. The owner reports completed tests; the independent reference-epoch read still shows no payment. See `docs/REHEARSAL-STATUS-2026-10-18.md` before asserting settlement. The Holder Center now supports a verified period catalog, currently listing that rehearsal period only. A production manifest catalog and wallet UI rehearsal
 must be completed before launching production claims. Do not republish period 1
 merely to exercise these pre-publication checks.
 
